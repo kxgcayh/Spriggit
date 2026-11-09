@@ -1,32 +1,44 @@
 # Installation
 
-## Install Latest .NET SDK
-You can get the typical SDK installation from Microsoft's official page
+Spriggit is a command-line application for macOS, Linux, and Windows. Building and installing translation tools require the .NET 10 SDK.
 
-[:octicons-arrow-right-24: Download SDK](https://dotnet.microsoft.com/download)
+```sh
+dotnet build Spriggit.slnx -c Release
+dotnet run --project Spriggit.CLI -c Release -- --help
+```
 
-!!! tip "Restart"
-    It's usually a good idea to restart your computer after installing DotNet SDK to help things settle in.
+Install the locally built CLI as a .NET tool:
 
-This step is needed by the "engine" in order to download the Spriggit translation packages via `dotnet tool install`.  [More info here](translation-packages.md).
+```sh
+dotnet pack Spriggit.CLI -c Release -o ./artifacts
+dotnet tool install --global Spriggit.CLI --add-source ./artifacts --prerelease
+spriggit --help
+```
 
-## Download Spriggit Exe
-Spriggit comes as a UI and a Command Line Interface.   Both can be downloaded from the github releases page
+Convert a Skyrim SE plugin to YAML:
 
-[:octicons-arrow-right-24: Download](https://github.com/Mutagen-Modding/Spriggit/releases)
+```sh
+spriggit serialize -i "/path/to/Data/SomeMod.esp" -o "/path/to/repository/SomeMod" -g SkyrimSE -p Spriggit.Yaml
+```
 
-### Spriggit UI
-This is a self-contained WPF application, which can only run on Windows.  You can add links between a mod file and where it should be translated to, and then sync back and forth with one click.
+Convert the text back to a plugin (the output file is overwritten):
 
-![Spriggit UI](images/spriggit-ui-1.png)
-![Spriggit UI](images/spriggit-ui-2.png)
+```sh
+spriggit deserialize -i "/path/to/repository/SomeMod" -o "/path/to/Data/SomeMod.esp"
+```
 
-### Spriggit CLI
-Spriggit comes with a Command Line Interface that can be used to convert from Betheseda Plugins to Git Repositories, and back.   
+Use `spriggit <command> --help` for conversion, upgrade, standardize, and merge options. Translation packages are downloaded from NuGet on first use and require network access.
 
-!!! tip "UI Can Also Run as a CLI"
-    The UI executable can also be run as a command line interface.
+To publish a standalone executable for your machine:
 
-For more details on the various commands that can be run:
+```sh
+dotnet publish Spriggit.CLI -c Release -r osx-arm64 --self-contained true -p:PackAsTool=false -p:PublishSingleFile=true -o ./publish
+./publish/Spriggit.CLI --help
+```
 
-[:octicons-arrow-right-24: Command Line Interface](cli.md)
+Replace `osx-arm64` with `osx-x64`, `linux-x64`, `linux-arm64`, `win-x64`, or `win-arm64` as needed. Windows executables have an `.exe` suffix.
+
+
+See [CLI commands](cli.md) for all options.
+
+Historical translation packages through 0.35.1 require Windows-only CLI releases. Upgrade projects using those packages on Windows before converting them on macOS or Linux.

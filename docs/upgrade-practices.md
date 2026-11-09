@@ -17,7 +17,7 @@ There are two approaches to upgrading Spriggit versions:
 
 1. **Upgrade the version** using the [`upgrade` command](cli.md#upgrade-spriggit-version):
    ```
-   .\Path\To\Spriggit.CLI.exe upgrade -p "C:\MyGitRepository\SomeMod.esp\" -v "1.2.3"
+   spriggit upgrade -p "/path/to/repository/SomeMod" -v "1.2.3"
    ```
 
 2. **Review the changes** to understand what the upgrade modified:
@@ -47,9 +47,8 @@ There are two approaches to upgrading Spriggit versions:
 
 2. **Re-serialize with new version** back to the repository:
    ```
-   .\Path\To\Spriggit.CLI.exe serialize -i "C:\Temp\SomeMod.esp" -o "C:\MyGitRepository\SomeMod.esp\"
+   spriggit serialize -i "/tmp/SomeMod.esp" -o "/path/to/repository/SomeMod"
    ```
-   Or use the UI, if that is what you're using.
 
 3. **Review and commit** the changes:
    ```

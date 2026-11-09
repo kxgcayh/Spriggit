@@ -87,7 +87,7 @@ public class PostSerializeChecker
                     _logger.Error($"    {id}");
                 }   
             }
-            if (origSummary.RecordIDs.Count > 0)
+            if (newSummary.RecordIDs.Count > 0)
             {
                 _logger.Error("  Serialized Mod:");
                 foreach (var id in newSummary.RecordIDs)
@@ -96,13 +96,13 @@ public class PostSerializeChecker
                 }   
             }
 
-            throw new DataMisalignedException();
+            throw new DataMisalignedException("Original and serialized mods had differing Record IDs");
         }
 
         if (newSummary.RecordCount != origSummary.RecordCount)
         {
             _logger.Error($"Mods had differing record counts {newSummary.RecordCount} != {origSummary.RecordCount}");
-            throw new DataMisalignedException();
+            throw new DataMisalignedException("Original and serialized mods had differing record counts");
         }
     }
 

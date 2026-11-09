@@ -113,10 +113,8 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
         persister.Persist(command.SpriggitPath, originalMeta);
 
         // Create runner with real dependencies
-        var metaUpdater = new SpriggitMetaUpdater(logger, _fileSystem, persister);
         var runner = new UpgradeTargetSpriggitVersionRunner(
             engine,
-            metaUpdater,
             _fileSystem,
             persister,
             _gitOperations,
@@ -149,12 +147,6 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
             null,
             Arg.Is<SpriggitMeta>(m => m.Source.Version == command.PackageVersion),
             Arg.Any<CancellationToken?>());
-    
-        // Verify the meta file was actually updated
-        var metaPath = Path.Combine(existingSpriggitPath, "spriggit-meta.json");
-        var updatedMetaJson = _fileSystem.File.ReadAllText(metaPath);
-        var updatedMeta = JsonConvert.DeserializeObject<SpriggitModKeyMetaSerialize>(updatedMetaJson, SpriggitExternalMetaPersister.JsonSettings);
-        updatedMeta!.Version.ShouldBe(command.PackageVersion);
     }
     
     #region Git Operations Tests
@@ -195,10 +187,8 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
         }
 
         // Replace the GitOperations in the runner with our real instance
-        var metaUpdater = new SpriggitMetaUpdater(_logger, _fileSystem, persister);
         var runnerWithRealGit = new UpgradeTargetSpriggitVersionRunner(
             engine,
-            metaUpdater,
             _fileSystem,
             persister,
             _gitOperations,
@@ -242,10 +232,8 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
         var persister = new SpriggitExternalMetaPersister(_fileSystem);
         persister.Persist(command.SpriggitPath, originalMeta);
 
-        var metaUpdater = new SpriggitMetaUpdater(_logger, _fileSystem, persister);
         var runnerWithRealGit = new UpgradeTargetSpriggitVersionRunner(
             engine,
-            metaUpdater,
             _fileSystem,
             persister,
             _gitOperations,
@@ -290,10 +278,8 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
         var persister = new SpriggitExternalMetaPersister(_fileSystem);
         persister.Persist(command.SpriggitPath, originalMeta);
 
-        var metaUpdater = new SpriggitMetaUpdater(_logger, _fileSystem, persister);
         var runnerWithRealGit = new UpgradeTargetSpriggitVersionRunner(
             engine,
-            metaUpdater,
             _fileSystem,
             persister,
             _gitOperations,
@@ -319,7 +305,7 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
     }
 
     [Theory, MutagenAutoData]
-    public async Task Execute_WithInvalidGitRepo_LogsWarningButStillSucceeds(
+    public async Task Execute_WithUnreadableGitRepo_BlocksUpgrade(
         ModKey modKey,
         [Frozen] ISpriggitEngine engine,
         UpgradeTargetSpriggitVersionRunner sut)
@@ -351,10 +337,8 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
         var persister = new SpriggitExternalMetaPersister(_fileSystem);
         persister.Persist(command.SpriggitPath, originalMeta);
 
-        var metaUpdater = new SpriggitMetaUpdater(_logger, _fileSystem, persister);
         var runnerWithRealGit = new UpgradeTargetSpriggitVersionRunner(
             engine,
-            metaUpdater,
             _fileSystem,
             persister,
             _gitOperations,
@@ -364,10 +348,8 @@ public class UpgradeTargetSpriggitVersionRunnerTests : IDisposable
         var result = await runnerWithRealGit.Execute(command);
 
         // Assert
-        result.ShouldBe(0); // Should succeed despite git issues
-        // Verify that engine operations still happened
-        await engine.Received(1).Deserialize(Arg.Any<string>(), Arg.Any<FilePath>(), Arg.Any<DirectoryPath?>(), Arg.Any<uint>(), Arg.Any<bool?>(), Arg.Any<IEngineEntryPoint?>(), Arg.Any<SpriggitSource?>(), Arg.Any<CancellationToken?>());
-        await engine.Received(1).Serialize(Arg.Any<ModPath>(), Arg.Any<DirectoryPath>(), Arg.Any<DirectoryPath?>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<IEngineEntryPoint?>(), Arg.Any<SpriggitMeta?>(), Arg.Any<CancellationToken?>());
+        result.ShouldBe(1); // Cannot prove the tree is clean, so refuse to overwrite it
+        await engine.DidNotReceiveWithAnyArgs().Serialize(default!, default!, default, default, default, default, default, default);
     }
 
     #endregion

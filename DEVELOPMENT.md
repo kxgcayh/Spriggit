@@ -14,10 +14,10 @@ The solution follows a layered architecture:
 - **Spriggit.Engine**: Main conversion engine that orchestrates NuGet package downloads and translation
 - **Spriggit.CLI**: Command-line interface executable
 - **Spriggit.CLI.Lib**: Shared CLI library logic
-- **Spriggit.UI**: WPF-based Windows GUI application
+- **Spriggit.Tests.Integration**: Portable engine and package integration tests
 - **Translation Packages**: Game-specific serialization packages for each Bethesda game (Skyrim, Oblivion, Fallout 4, Starfield) in both YAML and JSON formats
 
-The system uses a plugin architecture where translation logic is distributed as NuGet packages rather than being embedded in the CLI/UI, allowing for versioned translations and backward compatibility.
+The system uses a plugin architecture where translation logic is distributed as NuGet packages rather than being embedded in the CLI, allowing for versioned translations and backward compatibility.
 
 ## Development Commands
 
@@ -25,7 +25,7 @@ The system uses a plugin architecture where translation logic is distributed as 
 
 ```bash
 # Build entire solution
-dotnet build
+dotnet build Spriggit.slnx
 
 # Build specific project
 dotnet build Spriggit.CLI/Spriggit.CLI.csproj
@@ -41,7 +41,7 @@ dotnet pack
 
 ```bash
 # Run all tests
-dotnet test
+dotnet test Spriggit.slnx
 
 # Run tests for specific project
 dotnet test Spriggit.Tests/Spriggit.Tests.csproj
@@ -73,7 +73,7 @@ dotnet test -v normal
   - `Spriggit.Json.[Game]`: JSON serialization for each supported game
 - `/docs/`: MkDocs documentation site
 - Solution uses Central Package Management with `Directory.Packages.props`
-- All projects target .NET 9.0
+- All projects target .NET 10.0
 - Uses Mutagen.Bethesda libraries for Bethesda game file handling
 
 ## Key Dependencies
@@ -82,7 +82,6 @@ dotnet test -v normal
 - **Mutagen.Bethesda.Serialization**: Handles YAML/JSON conversion
 - **NuGet.Protocol**: For dynamic package downloading
 - **CommandLineParser**: CLI argument parsing
-- **ReactiveUI/WPF**: For the UI project
 - **xUnit**: Testing framework
 
 ## Development Notes
@@ -91,7 +90,7 @@ dotnet test -v normal
 - Game releases supported: Oblivion, Skyrim (LE/SE/VR/GOG), Fallout 4, Starfield
 - Each serialization creates a `.spriggit` metadata file tracking the package version used
 - Starfield requires "Master Style Input" - either DataFolder parameter or Known Masters in .spriggit file
-- Pre-build targets clear local NuGet cache for translation packages to ensure fresh downloads during development
+- Builds do not delete the user NuGet cache; use the CLI debug option when a cache reset is needed.
 
 ### File System Operations
 - **NEVER redirect to `nul`** - On Windows, `2>nul` creates unwanted files that Git tracks
@@ -172,7 +171,7 @@ Each record serialization file contains:
 # After making any code changes, ALWAYS follow these steps in order:
 
 # 1. Build to check for compilation errors
-dotnet build
+dotnet build Spriggit.slnx
 
 # 2. Run ALL relevant tests (not just one) to verify functionality
 dotnet test --filter "YourTestClassName"

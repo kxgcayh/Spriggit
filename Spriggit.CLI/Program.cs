@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using CommandLine;
 using Spriggit.CLI.Lib;
 using Spriggit.CLI.Lib.Commands.FormIDCollision;
@@ -32,7 +32,8 @@ try
             async (MergeVersionSyncerCommand cmd) => await MergeVersionSyncerRunner.Run(cmd),
             async (StandardizeCommand cmd) => await StandardizeRunner.Run(cmd),
             async (UpgradeTargetSpriggitVersionCommand cmd) => await UpgradeTargetSpriggitVersionRunner.Run(cmd),
-            async _ => 1);
+            errors => Task.FromResult(errors.All(error =>
+                error is HelpRequestedError or HelpVerbRequestedError or VersionRequestedError) ? 0 : 1));
 }
 catch (Exception ex)
 {

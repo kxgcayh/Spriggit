@@ -1,12 +1,12 @@
 # Spriggit Translation Packages
-The logic for actually doing the translation is not housed or packaged directly with the CLI or UI.   Rather, the logic exists in NuGet packages that are downloaded and then used to do the translation.
+The logic for actually doing the translation is not housed or packaged directly with the CLI.   Rather, the logic exists in NuGet packages that are downloaded and then used to do the translation.
 
 These are typically `Spriggit.Yaml` and `Spriggit.Json`, which are the two suites of Translation Packages that the Spriggit project itself provides.  A NuGet listing for one of them can be seen [here](https://www.nuget.org/packages/Spriggit.Yaml.Skyrim).
 
 ## Mechanics
 When Spriggit is asked to do a serialization from a Bethesda plugin file to text format, it takes the supplied Nuget package name and version and downloads that package.  It then uses the libraries within that package to do the translations.
 
-As such, a Spriggit CLI/UI can translate to/from many different translation formats/styles, rather than being bound to the translation logic that existed when the CLI/UI was built.
+As such, a Spriggit CLI can translate to/from many different translation formats/styles, rather than being bound to the translation logic that existed when the CLI was built.
 
 ## Reasoning
 This separation is an important aspect of keeping Spriggit flexible as record definitions evolve.   
@@ -32,3 +32,6 @@ More documentation will follow on how to upload your own customization package t
 - `Spriggit.Json.[GameName]`
 
 These are what will be used to do any translations, unless the user specifies the name of a customization package they wish to use instead.
+
+!!! warning
+    Package names come from `spriggit-meta.json` and `.spriggit` files, and the package is installed and run on your machine. Spriggit only accepts names made of letters, digits, `.`, `_` and `-`. Still, only work with repositories whose translation package you trust.

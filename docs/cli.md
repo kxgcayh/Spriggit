@@ -11,7 +11,7 @@ These commands have parameters that are optional only if a .spriggit file is fou
 This converts from a Bethesda Plugin mod to Yaml, and puts it in your Git Repository.
 
 ### Typical
-`.\Path\To\Spriggit.CLI.exe convert-from-plugin --InputPath "C:\Games\steamapps\common\Skyrim Special Edition\Data\SomeMod.esp" --OutputPath "C:\MyGitRepository\SomeMod.esp" --GameRelease SkyrimSE --PackageName Spriggit.Yaml`
+`spriggit convert-from-plugin --InputPath "/path/to/Data/SomeMod.esp" --OutputPath "/path/to/repository/SomeMod" --GameRelease SkyrimSE --PackageName Spriggit.Yaml`
 
 ### Parameters
 
@@ -56,7 +56,7 @@ The valid list of GameReleases are listed [here](https://github.com/Mutagen-Modd
 This converts from a folder in your Git Repository to a Bethesda Plugin.
 
 ### Typical
-`.\Path\To\Spriggit.CLI.exe convert-to-plugin --InputPath "C:\Users\Levia\Downloads\SpriggitOutput\SomeMod.esp" --OutputPath "C:\MyGitRepository\SomeMod.esp"`
+`spriggit convert-to-plugin --InputPath "/path/to/repository/SomeMod" --OutputPath "/path/to/repository/SomeMod"`
 
 ### Parameters
 | Short | Long | Required | Description |
@@ -82,10 +82,10 @@ This converts from a folder in your Git Repository to a Bethesda Plugin.
 ## Upgrade Spriggit Version
 `upgrade`
 
-This command upgrades existing Spriggit files to a newer package version. It deserializes the mod files using the current version, updates the spriggit-meta.json to the specified version, and re-serializes the files with the new translation package.
+This command upgrades existing Spriggit files to a newer package version. It deserializes the mod files using the current version, and re-serializes the files with the new translation package, which also updates the spriggit-meta.json to the specified version.
 
 ### Typical
-`.\Path\To\Spriggit.CLI.exe upgrade -p "C:\MyGitRepository\SomeMod.esp\" -v "1.2.3"`
+`spriggit upgrade -p "/path/to/repository/SomeMod" -v "1.2.3"`
 
 ### Parameters
 | Short | Long | Required | Description |
@@ -99,7 +99,7 @@ This command upgrades existing Spriggit files to a newer package version. It des
     It's recommended to backup your Spriggit files before upgrading, as the process involves deserializing and re-serializing your mod data.
 
 !!! tip "Git Integration"
-    By default, the upgrade command checks for uncommitted changes before starting and automatically commits the upgrade changes when complete. Use `--SkipGitOperations` to disable this behavior if you want to manage git operations manually.
+    By default, the upgrade command checks for uncommitted changes before starting and automatically commits the upgrade changes when complete. Use `--SkipGitOperations` to disable this behavior if you want to manage git operations manually. If the repository exists but cannot be read, the upgrade stops rather than risk overwriting uncommitted work. Only the files under the Spriggit folder are committed.
 
 !!! bug "Starfield"
     Starfield must supply [Master Style Input](#master-style-input)
@@ -115,7 +115,7 @@ This command helps detangle colliding FormIDs that result after a Git Merge.
     The logic that Spriggit contains to handle FormID conflicts can only handle two records with a single FormID.  As such, collisions need to be handled immediately after each Git merge.
 
 ### Typical
-`.\Path\To\Spriggit.CLI.exe formid-collision -p "C:\MyGitRepository\SomeMod.esp\"`
+`spriggit formid-collision -p "/path/to/repository/SomeMod"`
 
 ### Parameters
 | Short | Long | Required | Description |
@@ -131,7 +131,7 @@ This command is run after a Git merge to reconcile differing Spriggit versions b
 [:octicons-arrow-right-24: Merge Conflicts](merge-conflicts.md)
 
 ### Typical
-`.\Path\To\Spriggit.CLI.exe merge-version-syncer -p "C:\MyGitRepository\SomeMod.esp\"`
+`spriggit merge-version-syncer -p "/path/to/repository/SomeMod"`
 
 ### Parameters
 | Short | Long | Required | Description |
@@ -149,7 +149,7 @@ This command is run after a Git merge to reconcile differing Spriggit versions b
 This reads a Bethesda plugin and writes out a standardized (record-sorted) copy, which is useful when diffing two plugins at the binary level.
 
 ### Typical
-`.\Path\To\Spriggit.CLI.exe standardize -i "C:\Games\...\SomeMod.esp" -o "C:\SomeMod.standardized.esp" -g SkyrimSE`
+`spriggit standardize -i "/path/to/Data/SomeMod.esp" -o "/path/to/SomeMod.standardized.esp" -g SkyrimSE`
 
 ### Parameters
 | Short | Long | Required | Description |

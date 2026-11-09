@@ -127,7 +127,7 @@ public class GitOperationsTests : IDisposable
     }
 
     [Fact]
-    public async Task HasUncommittedChanges_WithException_ReturnsFalseAndLogsError()
+    public async Task HasUncommittedChanges_WithException_ReturnsTrueAndLogsError()
     {
         // Arrange - use a directory that will cause issues
         var invalidDir = Path.Combine(_repoFolder.Dir, "invalid-git");
@@ -141,7 +141,7 @@ public class GitOperationsTests : IDisposable
         var result = await _sut.HasUncommittedChanges(invalidDir);
 
         // Assert
-        result.ShouldBeFalse();
+        result.ShouldBeTrue();
         _logger.Received(1).Error(Arg.Any<Exception>(), "Error checking for uncommitted changes in {WorkingDirectory}", invalidDir);
     }
 

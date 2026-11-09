@@ -1,6 +1,6 @@
 # .spriggit File
 
-By default, the Translation Package and Version to use is set by the user when doing the translation call (either by UI or CMD).   In environments with multiple developers, though, this might be undesirable as each developer might choose different settings when working.
+By default, the Translation Package and Version to use is set by the user when doing the translation call through the CLI.   In environments with multiple developers, though, this might be undesirable as each developer might choose different settings when working.
 
 A dedicated `.spriggit` file can be defined at or above the spriggit folder in the repository, which provides a centralized location that the package details can be set.  These specifications are automatically picked up and used by Spriggit, keeping the settings coordinated even with many developers.
 

@@ -15,8 +15,11 @@ public class PrepareCliFolder
             url,
             Path.Combine(tmp.Dir, "SpriggitCLI.zip"),
             cancel);
-        Directory.CreateDirectory(targetDir);
-        System.IO.Compression.ZipFile.ExtractToDirectory(path, targetDir);
+        // Extract beside, then move, so an interrupted run never leaves a half-filled target folder
+        var extractDir = Path.Combine(tmp.Dir, "extract");
+        System.IO.Compression.ZipFile.ExtractToDirectory(path, extractDir);
+        Directory.CreateDirectory(Path.GetDirectoryName(targetDir)!);
+        Directory.Move(extractDir, targetDir);
     }
     
     static async Task DownloadFileAsync(string url, string outputPath, CancellationToken cancel)

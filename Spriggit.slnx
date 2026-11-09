@@ -24,7 +24,6 @@
   <Project Path="Spriggit.CLI/Spriggit.CLI.csproj" />
   <Project Path="Spriggit.Core/Spriggit.Core.csproj" />
   <Project Path="Spriggit.Engine/Spriggit.Engine.csproj" />
-  <Project Path="Spriggit.Tests.Windows/Spriggit.Tests.Windows.csproj" />
+  <Project Path="Spriggit.Tests.Integration/Spriggit.Tests.Integration.csproj" />
   <Project Path="Spriggit.Tests/Spriggit.Tests.csproj" />
-  <Project Path="Spriggit.UI/Spriggit.UI.csproj" />
 </Solution>

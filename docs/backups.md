@@ -15,4 +15,4 @@ Backups are stored for 30 days by default, at which point older ones are cleared
 
 ## Future Work
 
-More work might be put into the backup system, including easier ways to restore via CLI/UI, or mechanisms for storing backups in the Git repo itself.
+More work might be put into the backup system, including easier ways to restore via the CLI, or mechanisms for storing backups in the Git repo itself.

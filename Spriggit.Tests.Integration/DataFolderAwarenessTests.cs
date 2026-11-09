@@ -1,4 +1,4 @@
-﻿using System.IO.Abstractions;
+using System.IO.Abstractions;
 using System.Runtime.CompilerServices;
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Plugins;
@@ -17,7 +17,7 @@ using Spriggit.Core;
 using Spriggit.Engine.Services.Singletons;
 using Xunit;
 
-namespace Spriggit.Tests.Windows;
+namespace Spriggit.Tests.Integration;
 
 public class DataFolderAwarenessTests
 {

@@ -1,4 +1,4 @@
-﻿using System.IO.Abstractions;
+using System.IO.Abstractions;
 using System.Runtime.CompilerServices;
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Plugins.Binary.Parameters;
@@ -15,13 +15,32 @@ using Spriggit.Engine.Services.Singletons;
 using Xunit;
 using Npc = Mutagen.Bethesda.Skyrim.Npc;
 
-namespace Spriggit.Tests.Windows;
+namespace Spriggit.Tests.Integration;
 
 /// <summary>
 /// These unit tests leave some trash in temp
 /// </summary>
 public class ConstructEntryPointTests
 {
+    public sealed class LegacyCliTheoryAttribute : TheoryAttribute
+    {
+        public LegacyCliTheoryAttribute()
+        {
+            if (!OperatingSystem.IsWindows())
+                Skip = "Historical 0.20.0 CLI releases are Windows-only.";
+        }
+    }
+
+    [Theory, MutagenModAutoData(GameRelease.SkyrimSE, FileSystem: TargetFileSystem.Real)]
+    public async Task LegacyPackageRequiresWindows(Payload payload)
+    {
+        if (OperatingSystem.IsWindows()) return;
+        using var tmp = CreateDirFor();
+        var ident = new PackageIdentity("Spriggit.Yaml.Skyrim", new NuGetVersion(0, 20, 0));
+        await Assert.ThrowsAsync<PlatformNotSupportedException>(() =>
+            payload.Sut.ConstructFor(tmp.Dir, ident, CancellationToken.None));
+    }
+
     private static TempFolder CreateDirFor([CallerMemberName] string? name = null)
     {
         var dir = Path.Combine("SpriggitUnitTests", nameof(ConstructEntryPointTests), name!);
@@ -108,7 +127,7 @@ public class ConstructEntryPointTests
         }
     }
 
-    [Theory, MutagenModAutoData(GameRelease.SkyrimSE, FileSystem: TargetFileSystem.Real)]
+    [LegacyCliTheory, MutagenModAutoData(GameRelease.SkyrimSE, FileSystem: TargetFileSystem.Real)]
     public async Task TypicalExisting(Payload payload)
     {
         var ident = new PackageIdentity("Spriggit.Yaml.Skyrim", new NuGetVersion(0, 20, 0));
@@ -129,7 +148,7 @@ public class ConstructEntryPointTests
         entryPt.ShouldBeNull();
     }
 
-    [Theory, MutagenModAutoData(GameRelease.SkyrimSE, FileSystem: TargetFileSystem.Real)]
+    [LegacyCliTheory, MutagenModAutoData(GameRelease.SkyrimSE, FileSystem: TargetFileSystem.Real)]
     public async Task PluginFolderMalformedShouldRetry(Payload payload)
     {
         var ident = new PackageIdentity("Spriggit.Yaml.Skyrim", new NuGetVersion(0, 20, 0));

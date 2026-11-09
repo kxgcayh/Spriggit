@@ -26,17 +26,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        sln:
-          - Spriggit.slnx
-          - Spriggit.Linux.slnx
-        exclude:
-          - os: ubuntu-latest
-            sln: Spriggit.slnx
-          - os: macos-latest
-            sln: Spriggit.slnx
-          - os: windows-latest
-            sln: Spriggit.Linux.slnx
-          
     steps:
     - uses: actions/checkout@v4
       with:
@@ -47,9 +36,11 @@ jobs:
         dotnet-version: 10.0.*
     - name: Install dependencies
       run: |
-        dotnet clean ${{ matrix.sln }} -c Release && dotnet nuget locals all --clear
-        dotnet restore ${{ matrix.sln }}
+        dotnet clean Spriggit.slnx -c Release && dotnet nuget locals all --clear
+        dotnet restore Spriggit.slnx
     - name: Build
-      run: dotnet build ${{ matrix.sln }} -c Release --no-restore /p:GeneratePackageOnBuild=false
+      run: dotnet build Spriggit.slnx -c Release --no-restore /p:GeneratePackageOnBuild=false
     - name: Test
-      run: dotnet test ${{ matrix.sln }} -c Release --no-build
+      run: dotnet test Spriggit.slnx -c Release --no-build
+    - name: CLI smoke test
+      run: dotnet run --project Spriggit.CLI -c Release --no-build -- --help

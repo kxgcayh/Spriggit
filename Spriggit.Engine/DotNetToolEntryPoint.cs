@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO.Abstractions;
 using System.Runtime.InteropServices;
 using Mutagen.Bethesda;
@@ -63,7 +63,7 @@ public class DotNetToolEntryPoint : IEngineEntryPoint
         DirectoryPath toolsPath = _pathProvider.Path(
             _tempSourcesProvider.SpriggitTempPath,
             _package);
-        return Path.Combine(toolsPath, $"{_package.Id}{(System.OperatingSystem.IsLinux() ? string.Empty : ".exe")}");
+        return Path.Combine(toolsPath, $"{_package.Id}{(System.OperatingSystem.IsWindows() ? ".exe" : string.Empty)}");
     }
     
     public async Task Serialize(ModPath modPath, DirectoryPath outputDir, DirectoryPath? dataPath, KnownMaster[] knownMasters,

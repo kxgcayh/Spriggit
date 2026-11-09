@@ -123,34 +123,4 @@ public class NugetDownloader
             [],  // This is a list of secondary source repositories, probably empty
             cancel);
     }
-    
-    public async Task<PackageIdentity?> GetLatestIdentity(
-        string packageName,
-        string? packageVersion,
-        CancellationToken cancellationToken)
-    {
-        if (packageVersion.IsNullOrWhitespace())
-        {
-            var repos = _nugetSourceProvider.SourceRepositories;
-            foreach (var repository in repos)
-            {
-                FindPackageByIdResource resource = await repository.GetResourceAsync<FindPackageByIdResource>();
-                var versions = await resource.GetAllVersionsAsync(
-                    packageName,
-                    _cache,
-                    _nugetLogger,
-                    cancellationToken);
-                var version = GetLatestVersion(versions);
-                if (version == null) continue;
-
-                return new PackageIdentity(packageName, version);
-            }
-        }
-        else
-        {
-            return new PackageIdentity(packageName, NuGetVersion.Parse(packageVersion));
-        }
-
-        return null;
-    }
 }

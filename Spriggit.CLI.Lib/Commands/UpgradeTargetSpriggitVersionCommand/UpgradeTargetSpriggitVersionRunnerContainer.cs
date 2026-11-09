@@ -42,7 +42,6 @@ namespace Spriggit.CLI.Lib.Commands.UpgradeTargetSpriggitVersionCommand;
 [Register(typeof(DotNetToolTranslationPackagePathProvider))]
 [Register(typeof(ProvideCurrentTime), typeof(IProvideCurrentTime))]
 [Register(typeof(AssociatedFilesLocator), typeof(IAssociatedFilesLocator))]
-[Register(typeof(SpriggitMetaUpdater))]
 [Register(typeof(UpgradeTargetSpriggitVersionRunner))]
 partial class UpgradeTargetSpriggitVersionRunnerContainer : IContainer<UpgradeTargetSpriggitVersionRunner>
 {

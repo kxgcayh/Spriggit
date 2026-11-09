@@ -130,9 +130,6 @@ public class PluginBackupCreator
         return false;
     }
     
-    // https://stackoverflow.com/questions/1358510/how-to-compare-2-files-fast-using-net
-    const int BYTES_TO_READ = sizeof(Int64);
-    
     public bool FilesAreEqual(FilePath first, FilePath second)
     {
         var firstInfo = _fileSystem.FileInfo.New(first.Path);
@@ -142,8 +139,6 @@ public class PluginBackupCreator
 
         if (string.Equals(first.Path, second.Path, StringComparison.OrdinalIgnoreCase))
             return true;
-
-        int iterations = (int)Math.Ceiling((double)firstInfo.Length / BYTES_TO_READ);
 
         using (var fs1 = first.OpenRead(_fileSystem))
         {

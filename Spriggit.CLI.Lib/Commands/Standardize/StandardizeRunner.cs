@@ -16,7 +16,7 @@ public static class StandardizeRunner
         ModPath modPath = cmd.InputPath;
         using var tmp = TempFolder.Factory();
         var sortPath = Path.Combine(tmp.Dir, modPath.ModKey.FileName);
-        using (var f = File.OpenWrite(sortPath))
+        using (var f = File.Create(sortPath))
         {
             ModRecordSorter2.Sort(() =>
                 {
@@ -24,7 +24,7 @@ public static class StandardizeRunner
                     return new MutagenBinaryReadStream(cmd.InputPath, meta);
                 }, f);
         }
-        using (var f = File.OpenWrite(cmd.OutputPath))
+        using (var f = File.Create(cmd.OutputPath))
         {
             ModDecompressor.Decompress(() =>
                 {

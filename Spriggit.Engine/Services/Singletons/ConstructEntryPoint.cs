@@ -27,10 +27,19 @@ public class ConstructEntryPoint
         PackageIdentity ident,
         CancellationToken cancellationToken)
     {
+        PackageIdValidator.ThrowIfInvalid(ident.Id);
+
         // ToDo
         // Don't assume it's a Spriggit package.  Others might have their own versioning
         if (ident.Version <= _legacyVersion)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new PlatformNotSupportedException(
+                    $"Translation package {ident} requires a historical Windows-only CLI. "
+                    + "Use a package newer than 0.35.1, or upgrade the serialized project on Windows first.");
+            }
+
             return await ConstructForLegacy(tempPath, ident, cancellationToken);
         }
         

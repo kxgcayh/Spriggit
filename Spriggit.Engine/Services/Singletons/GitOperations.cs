@@ -19,67 +19,69 @@ public class GitOperations
         _gitFolderLocator = gitFolderLocator;
     }
 
-    public async Task<bool> HasUncommittedChanges(string workingDirectory, CancellationToken cancellationToken = default)
+    /// No repository means nothing to protect (false). If the repository exists but cannot be read, we
+    /// cannot prove it is clean, so report true and block callers from overwriting files.
+    public Task<bool> HasUncommittedChanges(string workingDirectory)
     {
         var gitFolder = _gitFolderLocator.Get(workingDirectory);
         if (gitFolder == null)
         {
             _logger.Warning("No git repository found for directory {WorkingDirectory}", workingDirectory);
-            return false;
+            return Task.FromResult(false);
         }
 
         var repoRoot = Path.GetDirectoryName(gitFolder.Value);
         if (repoRoot == null)
         {
             _logger.Warning("Could not determine git repository root for {GitFolder}", gitFolder);
-            return false;
+            return Task.FromResult(false);
         }
 
         try
         {
             using var repository = _gitRepositoryFactory.Get(repoRoot);
-            return repository.HasUncommittedChanges;
+            return Task.FromResult(repository.HasUncommittedChanges);
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error checking for uncommitted changes in {WorkingDirectory}", workingDirectory);
-            return false;
+            return Task.FromResult(true);
         }
     }
 
-    public async Task<bool> CommitChanges(string workingDirectory, string commitMessage, CancellationToken cancellationToken = default)
+    /// Commits only the files under <paramref name="workingDirectory"/>, not the rest of the repository.
+    public Task<bool> CommitChanges(string workingDirectory, string commitMessage)
     {
         var gitFolder = _gitFolderLocator.Get(workingDirectory);
         if (gitFolder == null)
         {
             _logger.Error("No git repository found for directory {WorkingDirectory}", workingDirectory);
-            return false;
+            return Task.FromResult(false);
         }
 
         var repoRoot = Path.GetDirectoryName(gitFolder.Value);
         if (repoRoot == null)
         {
             _logger.Error("Could not determine git repository root for {GitFolder}", gitFolder);
-            return false;
+            return Task.FromResult(false);
         }
 
         try
         {
             using var repository = _gitRepositoryFactory.Get(repoRoot);
 
-            // Stage all changes
-            repository.Stage("*");
-
-            // Commit the changes
+            var relative = Path.GetRelativePath(repoRoot, Path.GetFullPath(workingDirectory))
+                .Replace(Path.DirectorySeparatorChar, '/');
+            repository.Stage(relative is "." or "" ? "*" : relative + "/*");
             repository.Commit(commitMessage);
 
             _logger.Information("Successfully committed changes with message: {CommitMessage}", commitMessage);
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error committing changes in {WorkingDirectory}", workingDirectory);
-            return false;
+            return Task.FromResult(false);
         }
     }
 }

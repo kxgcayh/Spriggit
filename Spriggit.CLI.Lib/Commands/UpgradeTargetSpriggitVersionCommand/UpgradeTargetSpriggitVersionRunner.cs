@@ -10,7 +10,6 @@ namespace Spriggit.CLI.Lib.Commands.UpgradeTargetSpriggitVersionCommand;
 public class UpgradeTargetSpriggitVersionRunner
 {
     private readonly ISpriggitEngine _engine;
-    private readonly SpriggitMetaUpdater _metaUpdater;
     private readonly IFileSystem _fileSystem;
     private readonly SpriggitExternalMetaPersister _metaPersister;
     private readonly GitOperations _gitOperations;
@@ -18,14 +17,12 @@ public class UpgradeTargetSpriggitVersionRunner
 
     public UpgradeTargetSpriggitVersionRunner(
         ISpriggitEngine engine,
-        SpriggitMetaUpdater metaUpdater,
         IFileSystem fileSystem,
         SpriggitExternalMetaPersister metaPersister,
         GitOperations gitOperations,
         ILogger logger)
     {
         _engine = engine;
-        _metaUpdater = metaUpdater;
         _fileSystem = fileSystem;
         _metaPersister = metaPersister;
         _gitOperations = gitOperations;
@@ -85,15 +82,8 @@ public class UpgradeTargetSpriggitVersionRunner
             localize: null,
             cancel: CancellationToken.None);
         
+        // Serialize rewrites spriggit-meta.json itself, only after the new package succeeded
         _logger.Information("Updating spriggit-meta.json to version {Version}", command.PackageVersion);
-
-        if (!_metaUpdater.UpdateMetaVersion(command.SpriggitPath, command.PackageVersion))
-        {
-            _logger.Error("Failed to update spriggit-meta.json version");
-            return 1;
-        }
-
-        // Serialize the mod files back with the new version
         _logger.Information("Re-serializing mod files with new version");
 
         // Create updated metadata that preserves the original ModKey

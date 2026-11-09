@@ -36,26 +36,8 @@ public class MergeVersionSyncer
     {
         var gitRootPath = _gitFolderLocator.Get(spriggitModPath);
         
-        var repo = new LibGit2Sharp.Repository(gitRootPath);
-        if (repo == null)
-        {
-            throw new Exception("No git repository detected");
-        }
-
-        if (!repo.Head.Commits.Any())
-        {
-            throw new Exception("Git repository had no commits at HEAD");
-        }
-
-        var fixSignature = repo.Head.Tip.Author;
-        
-        var parents = repo.Head.Commits.First().Parents
-            .ToArray();
-
-        if (parents.Length != 2)
-        {
-            throw new Exception("Git did not have a merge commit at HEAD");
-        }
+        using var repo = GitMergeHelper.Open(gitRootPath);
+        var parents = GitMergeHelper.GetMergeParents(repo);
 
         var lhsSha = parents[0].Sha;
         var rhsSha = parents[1].Sha;
@@ -119,17 +101,17 @@ public class MergeVersionSyncer
         DirectoryPath spriggitPath)
     {
         var origBranch = repo.Head;
-        var branch = repo.CreateBranch($"Spriggit-Merge-Fix-{origBranch.Tip.Sha.Substring(0, 6)}", sha);
-        Commands.Checkout(repo, branch);
-
-        var meta = _externalMetaPersister.TryParseEmbeddedMeta(spriggitPath);
-        Commands.Checkout(repo, origBranch);
-        repo.Branches.Remove(branch);
-        if (meta == null)
+        var branch = GitMergeHelper.CreateTempBranch(repo, $"Spriggit-Merge-Fix-{origBranch.Tip.Sha.Substring(0, 6)}", repo.Lookup<Commit>(sha));
+        try
         {
-            throw new ArgumentException($"Could not find spriggit meta for sha {sha}");
+            Commands.Checkout(repo, branch);
+            return _externalMetaPersister.TryParseEmbeddedMeta(spriggitPath)
+                   ?? throw new ArgumentException($"Could not find spriggit meta for sha {sha}");
         }
-        return meta;
+        finally
+        {
+            GitMergeHelper.Restore(repo, origBranch, branch);
+        }
     }
 
     private async Task ExecuteUpgrade(
@@ -140,60 +122,59 @@ public class MergeVersionSyncer
         DirectoryPath? dataFolder)
     {
         var origBranch = repo.Head;
-        var newBranch = repo.CreateBranch($"Spriggit-Merge-Fix-New-{origBranch.Tip.Sha.Substring(0, 6)}", newSha);
-        Commands.Checkout(repo, newBranch);
-        
-        var newMeta = await _getMetaToUse.Get(null, spriggitPath, CancellationToken.None);
-        var newEntryPoint = await _entryPointCache.GetFor(newMeta.ToMeta(), CancellationToken.None);
-        if (newEntryPoint == null)
-        {
-            throw new NullReferenceException($"Could not construct entry point for {newMeta}");
-        }
-
-        var newExternalMeta = _externalMetaPersister.TryParseEmbeddedMeta(spriggitPath);
-        if (newExternalMeta == null)
-        {
-            throw new NullReferenceException($"Could not find embedded meta on {newSha}");
-        }
-        
-        var oldBranch = repo.CreateBranch($"Spriggit-Merge-Fix-Old-{origBranch.Tip.Sha.Substring(0, 6)}", oldSha);
-        Commands.Checkout(repo, oldBranch);
-        
-        var oldMeta = await _getMetaToUse.Get(null, spriggitPath, CancellationToken.None);
-        var oldEntryPoint = await _entryPointCache.GetFor(oldMeta.ToMeta(), CancellationToken.None);
-        if (oldEntryPoint == null)
-        {
-            throw new NullReferenceException($"Could not construct entry point for {oldMeta}");
-        }
-
-        var oldExternalMeta = _externalMetaPersister.TryParseEmbeddedMeta(spriggitPath);
-        if (oldExternalMeta == null)
-        {
-            throw new NullReferenceException($"Could not find embedded meta on {oldSha}");
-        }
-
-        if (newExternalMeta.Release != oldExternalMeta.Release)
-        {
-            throw new ArgumentException($"External meta releases did not match {newExternalMeta.Release} != {oldExternalMeta.Release}");
-        }
-
-        if (newExternalMeta.ModKey != oldExternalMeta.ModKey)
-        {
-            throw new ArgumentException($"External meta ModKeys did not match {newExternalMeta.ModKey} != {oldExternalMeta.ModKey}");
-        }
-        
+        var shaPrefix = origBranch.Tip.Sha.Substring(0, 6);
         using var tmp = TempFolder.Factory();
+        Branch? newBranch = null, oldBranch = null;
+        SpriggitModKeyMeta newExternalMeta, oldExternalMeta;
+        IEngineEntryPoint oldEntryPoint, newEntryPoint;
+        string modPath;
+        KnownMaster[] knownMasters;
 
-        var modPath = Path.Combine(tmp.Dir.Path, oldExternalMeta.ModKey.FileName);
-        
-        var spriggitFile = _spriggitFileLocator.LocateAndParse(spriggitPath);
+        try
+        {
+            newBranch = GitMergeHelper.CreateTempBranch(repo, $"Spriggit-Merge-Fix-New-{shaPrefix}", repo.Lookup<Commit>(newSha));
+            Commands.Checkout(repo, newBranch);
 
-        var knownMasters = spriggitFile?.KnownMasters ?? [];
-        
-        await oldEntryPoint.Deserialize(
-            inputPath: spriggitPath, outputPath: modPath, dataPath: dataFolder,
-            knownMasters: knownMasters,
-            workDropoff: null, fileSystem: null, streamCreator: null, cancel: CancellationToken.None);
+            var newMeta = await _getMetaToUse.Get(null, spriggitPath, CancellationToken.None);
+            newEntryPoint = await _entryPointCache.GetFor(newMeta.ToMeta(), CancellationToken.None)
+                            ?? throw new NullReferenceException($"Could not construct entry point for {newMeta}");
+
+            newExternalMeta = _externalMetaPersister.TryParseEmbeddedMeta(spriggitPath)
+                              ?? throw new NullReferenceException($"Could not find embedded meta on {newSha}");
+
+            oldBranch = GitMergeHelper.CreateTempBranch(repo, $"Spriggit-Merge-Fix-Old-{shaPrefix}", repo.Lookup<Commit>(oldSha));
+            Commands.Checkout(repo, oldBranch);
+
+            var oldMeta = await _getMetaToUse.Get(null, spriggitPath, CancellationToken.None);
+            oldEntryPoint = await _entryPointCache.GetFor(oldMeta.ToMeta(), CancellationToken.None)
+                            ?? throw new NullReferenceException($"Could not construct entry point for {oldMeta}");
+
+            oldExternalMeta = _externalMetaPersister.TryParseEmbeddedMeta(spriggitPath)
+                              ?? throw new NullReferenceException($"Could not find embedded meta on {oldSha}");
+
+            if (newExternalMeta.Release != oldExternalMeta.Release)
+            {
+                throw new ArgumentException($"External meta releases did not match {newExternalMeta.Release} != {oldExternalMeta.Release}");
+            }
+
+            if (newExternalMeta.ModKey != oldExternalMeta.ModKey)
+            {
+                throw new ArgumentException($"External meta ModKeys did not match {newExternalMeta.ModKey} != {oldExternalMeta.ModKey}");
+            }
+
+            modPath = Path.Combine(tmp.Dir.Path, oldExternalMeta.ModKey.FileName);
+            knownMasters = _spriggitFileLocator.LocateAndParse(spriggitPath)?.KnownMasters ?? [];
+
+            await oldEntryPoint.Deserialize(
+                inputPath: spriggitPath, outputPath: modPath, dataPath: dataFolder,
+                knownMasters: knownMasters,
+                workDropoff: null, fileSystem: null, streamCreator: null, cancel: CancellationToken.None);
+        }
+        finally
+        {
+            // Back on the merge commit, so the new-format files below land in its working tree
+            GitMergeHelper.Restore(repo, origBranch, newBranch, oldBranch);
+        }
 
         await newEntryPoint.Serialize(modPath, spriggitPath, dataFolder,
             knownMasters: knownMasters,

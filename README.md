@@ -1,4 +1,12 @@
 # Spriggit
+
+> [!WARNING]
+> **Experimental macOS-focused fork.** This repository is an experimental conversion of [Mutagen-Modding/Spriggit](https://github.com/Mutagen-Modding/Spriggit) into a cross-platform, command-line-only tool, made so it can be used on macOS (and Linux). The Windows-only WPF UI has been removed, and the CI, tests and packaging were changed to match.
+>
+> It is not the official release and is not supported by the upstream authors. Expect rough edges, and do not report problems with this fork to the upstream project. For production use on Windows, use the [official Spriggit](https://github.com/Mutagen-Modding/Spriggit) and its [documentation](https://mutagen-modding.github.io/Spriggit/).
+>
+> Known limits on macOS and Linux: translation packages newer than 0.35.1 work; older ones need the historical Windows-only CLI (see [Installation](#installation)). Always keep your plugins backed up and in Git before converting them.
+
 A tool to facilitate converting Bethesda plugin files to a text based format that can be stored in Git.   Large scale projects can then live in Github, and accept Pull Requests from many developers.
 
 The goal is to help modders store their files in a versioning system that allows them to easily iterate in the same way that programmers do with their code.   
@@ -92,25 +100,46 @@ Some/Folder/
 This folder structure helps organize git diffs to be more meaningful.  If a new record is added, then this will be seen as a new file.   If a record is modified, it will be a modified file.   Similar to wanting to avoid having a program's code be in one large monolith file, having smaller bite sized files helps navigate and digest changes being made.
 
 # Installation
-## Spriggit UI
-This is a self-contained WPF application, which can only run on Windows.  You can add links between a mod file and where it should be translated to, and then sync back and forth with one click.
+Spriggit is a command-line application for macOS, Linux, and Windows. Building and installing translation tools require the .NET 10 SDK.
 
-![image](https://github.com/Mutagen-Modding/Spriggit/assets/24981326/d6b0fed7-e989-4ecf-9dd3-738cc6985787)
-![image](https://github.com/Mutagen-Modding/Spriggit/assets/24981326/2112dc04-9171-47ff-b32c-f30e4ea0a117)
+```sh
+dotnet build Spriggit.slnx -c Release
+dotnet run --project Spriggit.CLI -c Release -- --help
+```
 
-## Spriggit CLI
-Spriggit comes with a Command Line Interface that can be used to convert from Betheseda Plugins to Git Repositories, and back.   Note that the UI can also accept these CLI commands, and so this variant is meant for linux machines that cannot handle the UI.   It is not self contained, so it might complain about needing a specific .NET runtime downloaded.
+Install the locally built CLI as a .NET tool:
 
-This would use Spriggit to convert from a SkyrimSE mod to Yaml, and put it in your Git Repository.
+```sh
+dotnet pack Spriggit.CLI -c Release -o ./artifacts
+dotnet tool install --global Spriggit.CLI --add-source ./artifacts --prerelease
+spriggit --help
+```
 
-`.\Path\To\Spriggit.CLI.exe serialize --InputPath "C:\Games\steamapps\common\Skyrim Special Edition\Data\SomeMod.esp" --OutputPath "C:\MyGitRepository\SomeMod.esp" --GameRelease SkyrimSE --PackageName Spriggit.Yaml`
+Convert a Skyrim SE plugin to YAML:
 
-And this would convert it back and overwrite the original mod file.
+```sh
+spriggit serialize -i "/path/to/Data/SomeMod.esp" -o "/path/to/repository/SomeMod" -g SkyrimSE -p Spriggit.Yaml
+```
 
-`.\Path\To\Spriggit.CLI.exe deserialize --InputPath "C:\Users\Levia\Downloads\SpriggitOutput\SomeMod.esp" --OutputPath "C:\MyGitRepository\SomeMod.esp"`
+Convert the text back to a plugin (the output file is overwritten):
+
+```sh
+spriggit deserialize -i "/path/to/repository/SomeMod" -o "/path/to/Data/SomeMod.esp"
+```
+
+Use `spriggit <command> --help` for conversion, upgrade, standardize, and merge options. Translation packages are downloaded from NuGet on first use and require network access.
+
+To publish a standalone executable for your machine:
+
+```sh
+dotnet publish Spriggit.CLI -c Release -r osx-arm64 --self-contained true -p:PackAsTool=false -p:PublishSingleFile=true -o ./publish
+./publish/Spriggit.CLI --help
+```
+
+Replace `osx-arm64` with `osx-x64`, `linux-x64`, `linux-arm64`, `win-x64`, or `win-arm64` as needed. Windows executables have an `.exe` suffix.
 
 # Spriggit Translation Packages
-The logic for actually doing the translation to/from an esp is not housed or packaged directly with the CLI or UI.   Rather, the logic exists in NuGet packages that are downloaded and then used to do the translation.
+The logic for actually doing the translation to/from an esp is not housed or packaged directly with the CLI.   Rather, the logic exists in NuGet packages that are downloaded and then used to do the translation.
 
 ## Mechanics
 When Spriggit is asked to do a serialization from a Bethesda plugin file to text format, you must provide it with the name of a `NuGet` package to use for the translation.   If a specific version is supplied, it will use that, otherwise it will grab the latest version of that package.
@@ -118,7 +147,7 @@ As it exports the text files, the NuGet package name and version are included.
 
 When Spriggit is asked to do a deserialization from text to a Bethesda Plugin, no specification of a `NuGet` package is needed.  Rather, it looks in the text files for the listed package + version that was used to make the files in the first place, and downloads that package to use.
 
-As such, a Spriggit CLI/UI can translate to/from many different translation formats/styles, rather than being bound to the translation logic that existed when the CLI/UI was built.
+As such, a Spriggit CLI can translate to/from many different translation formats/styles, rather than being bound to the translation logic that existed when the CLI was built.
 
 ## Reasoning
 This separation is an important aspect of keeping Spriggit flexible as record definitions evolve.   
@@ -145,3 +174,10 @@ More documentation will follow on how to upload your own customization package t
 These are what will be used to do any translations, unless the user specifies the name of a customization package they wish to use instead.
 
 Check out the [![Documentation](https://i.imgur.com/DGoSrNg.png)](https://mutagen-modding.github.io/Spriggit/) [Official Documentation](https://mutagen-modding.github.io/Spriggit/) for more detailed explainations of Spriggit, and more typical use cases and examples.
+
+Historical translation packages through 0.35.1 require Windows-only CLI releases. Upgrade projects using those packages on Windows before converting them on macOS or Linux.
+
+# Credits and License
+Spriggit was created by [Noggog](https://github.com/Noggog) and the [Mutagen-Modding](https://github.com/Mutagen-Modding) contributors. All of the design, the translation engine, the serialization packages and the documentation come from the [upstream Spriggit project](https://github.com/Mutagen-Modding/Spriggit). This fork only adapts it for macOS and Linux use, and stays dependent on [Mutagen](https://github.com/Mutagen-Modding/Mutagen) and [Mutagen.Bethesda.Serialization](https://github.com/Mutagen-Modding/Mutagen.Bethesda.Serialization).
+
+This project is distributed under the same license as upstream, the GNU General Public License v3.0. See [LICENSE](LICENSE).

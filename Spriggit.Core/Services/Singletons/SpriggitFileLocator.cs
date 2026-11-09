@@ -76,7 +76,6 @@ public class SpriggitFileLocator
         catch (Exception e)
         {
             _logger.Error(e, "Error reading spriggit config: {ConfigPath}", path.Value);
-            Console.WriteLine(e);
             throw;
         }
     }

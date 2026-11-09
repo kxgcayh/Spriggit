@@ -32,33 +32,28 @@ public class ConstructDotNetToolEndpoint
         _tempSourcesProvider = tempSourcesProvider;
     }
 
-    private async Task<bool> IsToolInstalled(
-        PackageIdentity ident,
-        DirectoryPath toolsPath,
-        CancellationToken cancellationToken)
+    // dotnet tool install --tool-path lays out .store/<id lowercase>/<version>/
+    private bool IsToolInstalled(PackageIdentity ident, DirectoryPath toolsPath)
     {
-        var args = $"tool list {ident.Id} --tool-path \"{toolsPath}\"";
-        var ret = _processFactory.Create(
-            new ProcessStartInfo("dotnet")
+        var storeDir = Path.Combine(toolsPath, ".store", ident.Id.ToLowerInvariant(), ident.Version.ToNormalizedString().ToLowerInvariant());
+        var exe = Path.Combine(toolsPath, $"{ident.Id}{(OperatingSystem.IsWindows() ? ".exe" : string.Empty)}");
+        return _fileSystem.Directory.Exists(storeDir) && _fileSystem.File.Exists(exe);
+    }
+
+    private async Task<IDisposable> AcquireLock(string lockPath, CancellationToken cancellationToken)
+    {
+        _fileSystem.Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+        while (true)
+        {
+            try
             {
-                Arguments = args,
-            },
-            cancel: cancellationToken,
-            killWithParent: false);
-        bool found = false;
-        using var outputSub = ret.Output
-            .Subscribe(x =>
+                return _fileSystem.FileStream.New(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+            }
+            catch (IOException)
             {
-                if (found) return;
-                var split = x.Split("      ");
-                if (split.Length != 3) return;
-                if (split[0].Equals(ident.Id, StringComparison.OrdinalIgnoreCase) && split[1] == ident.Version.ToString())
-                {
-                    found = true;
-                }
-            });
-        await ret.Run();
-        return found;
+                await Task.Delay(250, cancellationToken);
+            }
+        }
     }
 
     public async Task<DotNetToolEntryPoint?> ConstructFor(
@@ -73,8 +68,14 @@ public class ConstructDotNetToolEndpoint
             _logger.Information("In debug mode.  Forcing dotnet tool reinstall");
         }
         
-        if (_debugState.ClearNugetSources || !await IsToolInstalled(ident, toolsPath, cancellationToken))
+        if (_debugState.ClearNugetSources || !IsToolInstalled(ident, toolsPath))
         {
+            // Another Spriggit process may be installing the same tool right now
+            using var installLock = await AcquireLock($"{toolsPath.Path}.lock", cancellationToken);
+            if (!_debugState.ClearNugetSources && IsToolInstalled(ident, toolsPath))
+            {
+                return new DotNetToolEntryPoint(ident, _logger.ForContext<DotNetToolEntryPoint>(), _processFactory, _pathProvider, _tempSourcesProvider);
+            }
             try
             {
                 _logger.Information("Running DotNet Entry point install.  Clearing old path {ToolsPath}", toolsPath);

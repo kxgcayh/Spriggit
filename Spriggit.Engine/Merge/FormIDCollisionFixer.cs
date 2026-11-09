@@ -147,32 +147,15 @@ public class FormIDCollisionFixer
             .ToArray();
 
         var gitRootPath = _gitFolderLocator.Get(spriggitModPath);
-        
-        _logger.Information("Creating repo at {Path}", gitRootPath);
-
-        var repo = new LibGit2Sharp.Repository(gitRootPath);
-        if (repo == null)
-        {
-            throw new Exception("No git repository detected");
-        }
-
-        if (!repo.Head.Commits.Any())
-        {
-            throw new Exception("Git repository had no commits at HEAD");
-        }
+        _logger.Information("Opening repo at {Path}", gitRootPath);
+        using var repo = GitMergeHelper.Open(gitRootPath);
+        var parents = GitMergeHelper.GetMergeParents(repo);
 
         var fixSignature = repo.Head.Tip.Author;
-        var commit = repo.Head.Commits.First();
-        var parents = commit.Parents
-            .ToArray();
-        
+        var commit = repo.Head.Tip;
+
         _logger.Information("Considering commit {Sha}", commit.Sha);
 
-        if (parents.Length != 2)
-        {
-            throw new Exception("Git did not have a merge commit at HEAD");
-        }
-        
         _logger.Information("Parent commits:");
         _logger.Information($"  {parents[0].Sha}");
         _logger.Information($"  {parents[1].Sha}");
@@ -182,50 +165,59 @@ public class FormIDCollisionFixer
         
         _logger.Information("Creating branch {Branch} at {Sha}", branchName, parents[0].Sha);
         
-        repo.Branches.Remove(branchName);
-        var branch = repo.CreateBranch(branchName, parents[0]);
-        Commands.Checkout(repo, branch);
+        var branch = GitMergeHelper.CreateTempBranch(repo, branchName, parents[0]);
+        try
+        {
+            Commands.Checkout(repo, branch);
 
-        _logger.Information("Deserializing mod to {Path}", origMergedModPath);
-        await _spriggitEngine.Deserialize(
-            spriggitPluginPath: spriggitModPath,
-            outputFile: origMergedModPath,
-            dataPath: dataPath,
-            backupDays: 0,
-            localize: null);
+            _logger.Information("Deserializing mod to {Path}", origMergedModPath);
+            await _spriggitEngine.Deserialize(
+                spriggitPluginPath: spriggitModPath,
+                outputFile: origMergedModPath,
+                dataPath: dataPath,
+                backupDays: 0,
+                localize: null);
 
-        var branchMod = ModInstantiator<TMod>.Importer(origMergedModPath.Path, meta.Release, readParams);
+            var branchMod = ModInstantiator<TMod>.Importer(origMergedModPath.Path, meta.Release, readParams);
 
-        _logger.Information("Executing reassignment");
-        _reassigner.Reassign<TMod, TModGetter>(
-            branchMod, 
-            () => origMergedMod.GetNextFormKey(),
-            toReassign);
+            _logger.Information("Executing reassignment");
+            _reassigner.Reassign<TMod, TModGetter>(
+                branchMod, 
+                () => origMergedMod.GetNextFormKey(),
+                toReassign);
         
-        _logger.Information("Writing reassigned mod to {Path}", origMergedModPath.Path);
-        branchMod.WriteToBinary(origMergedModPath.Path, writeParams);
+            _logger.Information("Writing reassigned mod to {Path}", origMergedModPath.Path);
+            branchMod.WriteToBinary(origMergedModPath.Path, writeParams);
         
-        _logger.Information("Serializing mod to {Path}", spriggitModPath);
-        await _spriggitEngine.Serialize(
-            bethesdaPluginPath: origMergedModPath.Path,
-            outputFolder: spriggitModPath,
-            dataPath: dataPath,
-            postSerializeChecks: true,
-            throwOnUnknown: true,
-            meta: meta.ToMeta());
+            _logger.Information("Serializing mod to {Path}", spriggitModPath);
+            await _spriggitEngine.Serialize(
+                bethesdaPluginPath: origMergedModPath.Path,
+                outputFolder: spriggitModPath,
+                dataPath: dataPath,
+                postSerializeChecks: true,
+                throwOnUnknown: true,
+                meta: meta.ToMeta());
 
-        _logger.Information("Committing changes");
-        Commands.Checkout(repo, branch);
-        Commands.Stage(repo, Path.Combine(spriggitModPath, "*"));
-        repo.Commit("FormID Collision Fix", fixSignature, fixSignature, new CommitOptions());
+            _logger.Information("Committing changes");
+            var relativeModPath = Path.GetRelativePath(
+                Path.GetDirectoryName(gitRootPath!.Value.Path)!, spriggitModPath.Path);
+            Commands.Stage(repo, relativeModPath.Replace(Path.DirectorySeparatorChar, '/') + "/*");
+            repo.Commit("FormID Collision Fix", fixSignature, fixSignature, new CommitOptions());
 
-        _logger.Information("Checking out original branch {Branch}", origBranch.CanonicalName);
-        Commands.Checkout(repo, origBranch);
-        _logger.Information("Merging fix into {Branch}", origBranch.CanonicalName);
-        repo.Merge(branch, fixSignature);
+            _logger.Information("Checking out original branch {Branch}", origBranch.CanonicalName);
+            Commands.Checkout(repo, origBranch);
+            _logger.Information("Merging fix into {Branch}", origBranch.CanonicalName);
+            var mergeResult = repo.Merge(branch, fixSignature);
+            if (mergeResult.Status == MergeStatus.Conflicts)
+            {
+                throw new Exception("Merging the FormID fix produced conflicts");
+            }
         
-        _logger.Information("Deleting fix branch {Branch}", branch.CanonicalName);
-        repo.Branches.Remove(branch);
+        }
+        finally
+        {
+            GitMergeHelper.Restore(repo, origBranch, branch);
+        }
         
         _logger.Information("Checking for collisions in fixed result");
         

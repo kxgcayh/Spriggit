@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
@@ -17,7 +17,6 @@
     <ItemGroup>
         <ProjectReference Include="..\Spriggit.Engine\Spriggit.Engine.csproj"/>
         <ProjectReference Include="..\Spriggit.Tests\Spriggit.Tests.csproj" />
-        <ProjectReference Include="..\Spriggit.UI\Spriggit.UI.csproj" />
         <ProjectReference Include="..\Translation Packages\Spriggit.Yaml.Skyrim\Spriggit.Yaml.Skyrim.csproj" />
     </ItemGroup>
 

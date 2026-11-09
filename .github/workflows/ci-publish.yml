@@ -50,17 +50,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        sln:
-          - Spriggit.slnx
-          - Spriggit.Linux.slnx
-        exclude:
-          - os: ubuntu-latest
-            sln: Spriggit.slnx
-          - os: macos-latest
-            sln: Spriggit.slnx
-          - os: windows-latest
-            sln: Spriggit.Linux.slnx
-          
     steps:
     - uses: actions/checkout@v4
       with:
@@ -78,18 +67,20 @@ jobs:
         dotnet-version: 10.0.*
     - name: Install dependencies
       run: |
-        dotnet clean ${{ matrix.sln }} -c Release && dotnet nuget locals all --clear
-        dotnet restore ${{ matrix.sln }}
+        dotnet clean Spriggit.slnx -c Release && dotnet nuget locals all --clear
+        dotnet restore Spriggit.slnx
     - name: Build
-      run: dotnet build ${{ matrix.sln }} -c Release --no-restore
+      run: dotnet build Spriggit.slnx -c Release --no-restore
     - name: Test
-      run: dotnet test ${{ matrix.sln }} -c Release --no-build
+      run: dotnet test Spriggit.slnx -c Release --no-build
+    - name: CLI smoke test
+      run: dotnet run --project Spriggit.CLI -c Release --no-build -- --help
 
 
   build-test-push:
     needs: [build-test, activity-short-circuit]
     if: needs.activity-short-circuit.outputs.same_sha == 'false'
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
@@ -126,61 +117,26 @@ jobs:
     - name: Pack
       run: |
         dotnet pack Spriggit.slnx -c Release --no-build --no-restore -o out --include-symbols -p:SymbolPackageFormat=snupkg
-    - name: Pack GUI
+    - name: Publish standalone CLIs
       if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      run: dotnet publish "Spriggit.UI/Spriggit.UI.csproj" --configuration Release -p:PublishSingleFile=true -o gui-publish
-    - name: Pack Linux CLI
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      run: dotnet publish "Spriggit.CLI/Spriggit.CLI.csproj" --configuration Release -r linux-x64 -p:PublishSingleFile=True -p:PackAsTool=false --self-contained True -o linux-cli-publish
-    - name: Pack CLI
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      run: dotnet publish "Spriggit.CLI/Spriggit.CLI.csproj" --configuration Release -r win-x64 -p:PublishSingleFile=True -p:PackAsTool=false --self-contained True -o cli-publish
-    - name: Archive GUI
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        powershell Compress-Archive gui-publish/* Spriggit.zip
-    - name: Archive Linux CLI
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      run: |
-        powershell Compress-Archive linux-cli-publish/* SpriggitLinuxCLI.zip
-    - name: Archive CLI
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      run: |
-        powershell Compress-Archive cli-publish/* SpriggitCLI.zip
-    - name: Publish GUI to Github
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      uses: svenstaro/upload-release-action@v2
-      with:
-        file: Spriggit.zip
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.RELEASE_TAG }}
-        overwrite: true
-    - name: Publish Linux CLI to Github
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      uses: svenstaro/upload-release-action@v2
-      with:
-        file: SpriggitLinuxCLI.zip
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.RELEASE_TAG }}
-        overwrite: true
-    - name: Publish CLI to Github
-      if: ${{ success() && !github.event.release.prerelease && env.RELEASE_TAG != '' }}
-      uses: svenstaro/upload-release-action@v2
-      with:
-        file: SpriggitCLI.zip
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.RELEASE_TAG }}
-        overwrite: true
+        for rid in linux-x64 linux-arm64 osx-x64 osx-arm64 win-x64 win-arm64; do
+          dotnet publish Spriggit.CLI/Spriggit.CLI.csproj -c Release -r "$rid" -p:PublishSingleFile=true -p:PackAsTool=false --self-contained true -o "publish/$rid"
+          tar -czf "SpriggitCLI-$rid.tar.gz" -C "publish/$rid" .
+          gh release upload "$RELEASE_TAG" "SpriggitCLI-$rid.tar.gz" --clobber
+        done
     - name: Print Packages
       run: |
         ls out/*.nupkg
     - name: Publish to Nuget.org
       run: |
-        Get-ChildItem "out/*.nupkg" | ForEach-Object {
-          Write-Host "Pushing $($_.Name)"
-          dotnet nuget push $_.FullName --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
-        }  
-        
+        for package in out/*.nupkg; do
+          dotnet nuget push "$package" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
+        done
+
   update-nightly:
     needs: [build-test-push, activity-short-circuit]
     if: needs.activity-short-circuit.outputs.same_sha == 'false'

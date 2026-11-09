@@ -1,4 +1,4 @@
-﻿using System.IO.Abstractions;
+using System.IO.Abstractions;
 using Autofac;
 using LibGit2Sharp;
 using Mutagen.Bethesda;
@@ -18,7 +18,7 @@ using Spriggit.Yaml.Skyrim;
 using Xunit;
 using IContainer = Autofac.IContainer;
 
-namespace Spriggit.Tests.Windows.Merge;
+namespace Spriggit.Tests.Integration.Merge;
 
 public class FormIDCollisionFixerTests
 {
