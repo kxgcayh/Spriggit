@@ -79,7 +79,7 @@ public class DotNetToolEntryPoint : IEngineEntryPoint
             {
                 Arguments = args
             },
-            killWithParent: !RuntimeInformation.IsOSPlatform(OSPlatform.Linux));
+            killWithParent: RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
         using var outputSub = processWrapper.Output
             .Subscribe(x =>
             {
@@ -109,7 +109,7 @@ public class DotNetToolEntryPoint : IEngineEntryPoint
             {
                 Arguments = args
             },
-            killWithParent: !RuntimeInformation.IsOSPlatform(OSPlatform.Linux));
+            killWithParent: RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
         using var outputSub = processWrapper.Output
             .Subscribe(x =>
             {

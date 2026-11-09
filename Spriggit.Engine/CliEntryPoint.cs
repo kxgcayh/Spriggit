@@ -62,7 +62,7 @@ public class CliEntryPoint : IEntryPoint
             {
                 Arguments = args
             },
-            killWithParent: !RuntimeInformation.IsOSPlatform(OSPlatform.Linux));
+            killWithParent: RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
         using var outputSub = processWrapper.Output
             .Subscribe(x =>
             {
@@ -92,7 +92,7 @@ public class CliEntryPoint : IEntryPoint
             {
                 Arguments = args
             },
-            killWithParent: !RuntimeInformation.IsOSPlatform(OSPlatform.Linux));
+            killWithParent: RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
         using var outputSub = processWrapper.Output
             .Subscribe(x =>
             {
